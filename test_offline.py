@@ -13,6 +13,8 @@ def fake_get(url,params=None,**k):
     if "textmebot" in url: sent.append(params["text"]); assert params["recipient"]=="+85200000000"; return R()
     if "buy-iphone" in url: return R(text="MK2D4ZA/A MK2E4ZA/A")
     if "fulfillment" in url:
+        if "pl" not in (params or {}):
+            return R(js={"body":{"content":{"deliveryMessage":{params["parts.0"]:{"isBuyable":stock.get("buy",False),"regular":{"deliveryOptions":[{"displayName":"Delivers Fri 23 Oct"}]}}}}}})
         if not stock["open"]: return R(541)
         p=params["parts.0"]; ok=stock["avail"] and p=="MK2D4ZA/A"
         return R(js={"body":{"content":{"pickupMessage":{"stores":[{"storeName":"ifc mall","partsAvailability":{p:{"pickupDisplay":"available" if ok else "unavailable","messageTypes":{"regular":{"storePickupProductTitle":"iPhone Duo 1TB Night Sky"}}}}}]}}}})
@@ -26,4 +28,6 @@ run(); assert len(sent)==1, sent                                  # pickup close
 stock["open"]=True; run(); assert "已開放" in sent[-1], sent       # pickup opens
 n=len(sent); stock["avail"]=True; run(); assert "IN STOCK" in sent[-1] and len(sent)==n+1
 n=len(sent); run(); assert len(sent)==n, "must not repeat alert"  # dedupe via state file
+n=len(sent); stock["buy"]=True; run(); assert any("ORDERABLE" in x for x in sent[n:]), sent
+n=len(sent); run(); assert len(sent)==n
 print("OFFLINE TEST PASSED:", len(sent), "messages"); print(sent[-1])

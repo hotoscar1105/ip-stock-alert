@@ -176,6 +176,26 @@ def check(part):
     return title, hits
 
 
+def check_delivery(part):
+    """Home-delivery / preorder availability. Returns (buyable, quote_text) or None if unknown.
+    Best effort: reads the delivery block of the same Apple endpoint (no store, no pickup flag)."""
+    r = requests.get(STOCK_URL, params={"mts.0": "regular", "parts.0": part},
+                     headers={**HEADERS, "Accept": "application/json"}, timeout=15)
+    if not r.ok:
+        return None
+    try:
+        dm = r.json()["body"]["content"]["deliveryMessage"][part]
+    except (KeyError, TypeError, ValueError):
+        return None
+    quote = ""
+    for opt in (dm.get("regular", {}) or {}).get("deliveryOptions", []) or []:
+        quote = opt.get("displayName") or opt.get("date") or quote
+        if quote:
+            break
+    quote = quote or (dm.get("regular", {}) or {}).get("quote", "") or ""
+    return bool(dm.get("isBuyable")), str(quote)
+
+
 def load_state():
     try:
         with open(STATE_FILE) as f:
@@ -199,6 +219,22 @@ def one_round(parts, st):
     not_open = 0
     for part in parts:
         try:
+            d = check_delivery(part)
+        except Exception as e:
+            d = None
+            log(f"{part}: delivery check failed ({e})")
+        if d is not None:
+            buyable, quote = d
+            key = ("home delivery", part)
+            if buyable and key not in alerted:
+                link = f"https://www.apple.com/hk/en/shop/product/{part.replace('/', '%2F')}"
+                msg = f"🚨 可落單 ORDERABLE (delivery)\n{part}\n{quote}\n{link}"
+                log(msg.replace("\n", " | "))
+                notify(msg)
+                alerted.add(key)
+            elif not buyable:
+                alerted.discard(key)
+        try:
             title, hits = check(part)
         except Exception as e:
             log(f"{part}: check failed ({e})")
@@ -213,7 +249,7 @@ def one_round(parts, st):
             if len(pickup_open) == 1:
                 notify("📣 Apple 已開放 iPhone Duo 店舖取貨查詢，bot 而家開始睇庫存")
         if not hits:
-            for key in [k for k in alerted if k[1] == part]:
+            for key in [k for k in alerted if k[1] == part and k[0] != "home delivery"]:
                 alerted.discard(key)       # stock gone: allow a fresh alert if it returns
         else:
             new = [h for h in hits if (h, part) not in alerted]
