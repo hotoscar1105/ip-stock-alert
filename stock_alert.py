@@ -88,9 +88,11 @@ def whatsapp(text):
     try:
         r = requests.get(url, params=params, timeout=20)
         body = r.text[:160].replace("\n", " ")
-        if r.status_code != 200 or "error" in body.lower():
+        bad = any(w in body.lower() for w in ("error", "invalid", "incorrect", "wrong", "not ", "fail", "denied"))
+        if r.status_code != 200 or bad:
             log(f"WhatsApp error: HTTP {r.status_code} {body}")
             return False
+        log(f"WhatsApp reply: HTTP {r.status_code} {body}")
         return True
     except requests.RequestException as e:
         log(f"WhatsApp error: {e}")
@@ -223,8 +225,15 @@ def one_round(parts, st):
         except Exception as e:
             d = None
             log(f"{part}: delivery check failed ({e})")
-        if d is not None:
+        if d is None:
+            if part not in st.setdefault("dlog", set()):
+                st["dlog"].add(part)
+                log(f"{part}: delivery info not available yet from Apple")
+        else:
             buyable, quote = d
+            if ("dl", part, buyable, quote) not in st.setdefault("dlog", set()):
+                st["dlog"].add(("dl", part, buyable, quote))
+                log(f"{part}: delivery buyable={buyable} {quote}")
             key = ("home delivery", part)
             if buyable and key not in alerted:
                 link = f"https://www.apple.com/hk/en/shop/product/{part.replace('/', '%2F')}"
