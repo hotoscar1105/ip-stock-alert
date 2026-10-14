@@ -33,9 +33,10 @@ import sys
 # Secrets are read from environment variables (GitHub Actions secrets), never stored in the file.
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
-# WhatsApp via CallMeBot (free, personal use): phone incl. country code, e.g. +85212345678
+# WhatsApp: your own number incl. country code, e.g. +85212345678, plus a TextMeBot (or CallMeBot) key
 WHATSAPP_PHONE = os.environ.get("WHATSAPP_PHONE", "")
-WHATSAPP_APIKEY = os.environ.get("WHATSAPP_APIKEY", "")
+WHATSAPP_APIKEY = os.environ.get("WHATSAPP_APIKEY", "")        # CallMeBot key
+TEXTMEBOT_APIKEY = os.environ.get("TEXTMEBOT_APIKEY", "")      # TextMeBot key (preferred)
 STATE_FILE = os.environ.get("STATE_FILE", "state.json")
 
 # Only alert for these stores (leave empty = any HK store)
@@ -73,14 +74,22 @@ def log(msg):
 
 
 def whatsapp(text):
-    if not WHATSAPP_PHONE or not WHATSAPP_APIKEY:
+    """WhatsApp via TextMeBot (preferred) or CallMeBot. Returns True if sent."""
+    if not WHATSAPP_PHONE:
+        return False
+    if TEXTMEBOT_APIKEY:
+        url, params = "https://api.textmebot.com/send.php", {
+            "recipient": WHATSAPP_PHONE, "apikey": TEXTMEBOT_APIKEY, "text": text}
+    elif WHATSAPP_APIKEY:
+        url, params = "https://api.callmebot.com/whatsapp.php", {
+            "phone": WHATSAPP_PHONE, "text": text, "apikey": WHATSAPP_APIKEY}
+    else:
         return False
     try:
-        r = requests.get("https://api.callmebot.com/whatsapp.php",
-                         params={"phone": WHATSAPP_PHONE, "text": text, "apikey": WHATSAPP_APIKEY},
-                         timeout=20)
-        if r.status_code != 200:
-            log(f"WhatsApp error: HTTP {r.status_code} {r.text[:120]}")
+        r = requests.get(url, params=params, timeout=20)
+        body = r.text[:160].replace("\n", " ")
+        if r.status_code != 200 or "error" in body.lower():
+            log(f"WhatsApp error: HTTP {r.status_code} {body}")
             return False
         return True
     except requests.RequestException as e:

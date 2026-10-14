@@ -1,6 +1,6 @@
 """Offline test: fake Apple + fake CallMeBot, run the real script twice via --once."""
 import os, sys, json, importlib, types
-os.environ.update(WHATSAPP_PHONE="+85200000000", WHATSAPP_APIKEY="k", STATE_FILE="/tmp/_st.json", RUN_SECONDS="0")
+os.environ.update(WHATSAPP_PHONE="+85200000000", TEXTMEBOT_APIKEY="k", STATE_FILE="/tmp/_st.json", RUN_SECONDS="0")
 if os.path.exists("/tmp/_st.json"): os.remove("/tmp/_st.json")
 import requests
 sent=[]; stock={"open":False,"avail":False}
@@ -10,7 +10,7 @@ class R:
     def raise_for_status(s):
         if s.status_code>=400: raise requests.HTTPError(str(s.status_code))
 def fake_get(url,params=None,**k):
-    if "callmebot" in url: sent.append(params["text"]); return R()
+    if "textmebot" in url: sent.append(params["text"]); assert params["recipient"]=="+85200000000"; return R()
     if "buy-iphone" in url: return R(text="MK2D4ZA/A MK2E4ZA/A")
     if "fulfillment" in url:
         if not stock["open"]: return R(541)

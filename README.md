@@ -6,14 +6,15 @@ WhatsApp message (and/or Telegram) the moment one is in stock. No computer needs
 ## Secrets (Settings → Secrets and variables → Actions)
 | Name | Value |
 |---|---|
-| `WHATSAPP_PHONE` | your number with country code, e.g. `+852XXXXXXXX` |
-| `WHATSAPP_APIKEY` | key from CallMeBot (below) |
+| `WHATSAPP_PHONE` | your WhatsApp number with country code, e.g. `+852XXXXXXXX` |
+| `TEXTMEBOT_APIKEY` | key from textmebot.com (2-day free demo, then US$1/month for messages to yourself) |
+| `WHATSAPP_APIKEY` | alternative: CallMeBot key (free, but its number is often full) |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | optional, if you also want Telegram |
 
-## Get the WhatsApp key (free, 1 minute)
-1. Save **+34 611 04 87 48** as a contact.
-2. From your WhatsApp send it: `I allow callmebot to send me messages`
-3. It replies with your API key.
+## Get the TextMeBot key
+1. On textmebot.com request a demo ApiKey (arrives by email).
+2. Open the two links in that email: add your phone number, then link your WhatsApp (QR scan, like WhatsApp Web).
+3. Put the key and your number in the secrets above.
 
 ## Test
 Actions → "iPhone Duo stock watch" → Run workflow → tick *heartbeat*. You should get a WhatsApp message.
