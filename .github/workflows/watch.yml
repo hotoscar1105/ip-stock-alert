@@ -1,0 +1,45 @@
+name: iPhone Duo stock watch
+on:
+  schedule:
+    - cron: "*/5 * * * *"       # every 5 minutes (GitHub may delay runs a few minutes)
+  workflow_dispatch:
+    inputs:
+      heartbeat:
+        description: "Send a test/alive message to WhatsApp"
+        type: boolean
+        default: false
+concurrency:
+  group: watch
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install requests
+      - name: Restore state (what has already been alerted)
+        uses: actions/cache/restore@v4
+        with:
+          path: state.json
+          key: state-${{ github.run_id }}
+          restore-keys: state-
+      - name: Check stock
+        env:
+          WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
+          WHATSAPP_APIKEY: ${{ secrets.WHATSAPP_APIKEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_SECONDS: "280"
+          HEARTBEAT: ${{ github.event.inputs.heartbeat == 'true' && '1' || '0' }}
+        run: python stock_alert.py --once
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state.json
+          key: state-${{ github.run_id }}
